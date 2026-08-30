@@ -116,10 +116,10 @@
           <div class="engine">
             <label for="modelSelect">翻訳モデル:</label>
             <select id="modelSelect">
-              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (推奨・標準)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (高精度)</option>
-              <option value="gemini-3.7-flash">Gemini 3.7 Flash (最新)</option>
-              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (高速)</option>
+              <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash-Lite (標準)</option>
+              <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
             </select>
           </div>
           <button class="primary" id="translateBtn" type="button" disabled>AIで日本語に翻訳する →</button>
@@ -311,26 +311,37 @@
         }
 
         let completed = 0;
+        let failedCount = 0;
+        const MAX_FAILED_LINES = 100;
+        let isAborted = false;
         const errors = [];
         setStatus(`Geminiが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
 
         for (let i = 0; i < batches.length; i++) {
+          const currentBatch = batches[i];
           try {
-            const results = await translateBatch(batches[i], selectedModel);
+            const results = await translateBatch(currentBatch, selectedModel);
             results.forEach((text, line) => { lines[line] = text; });
           } catch (error) {
-            errors.push(`${batches[i][0].line + 1}〜${batches[i].at(-1).line + 1}行目: ${error.message}`);
+            failedCount += currentBatch.length;
+            errors.push(`${currentBatch[0].line + 1}〜${currentBatch.at(-1).line + 1}行目: ${error.message}`);
+            if (failedCount > MAX_FAILED_LINES) {
+              isAborted = true;
+              break;
+            }
           }
-          completed += batches[i].length;
-          setStatus(`Geminiが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行`);
+          completed += currentBatch.length;
+          setStatus(`Geminiが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
         }
 
         translatedText.value = lines.join(newline);
         translateBtn.disabled = false;
         modelSelect.disabled = false;
 
-        if (errors.length) {
-          setStatus(`一部の翻訳に失敗しました。${errors.join(' / ')}。該当行は原文のままです。`, 'error');
+        if (isAborted) {
+          setStatus(`【処理中断】エラーにより未翻訳（原文のまま）となった行が100行を超えたため（未翻訳: ${failedCount} 行）、安全のため処理を停止しました。最新のエラー: ${errors.at(-1) || '通信エラー'}（該当行までは反映済みです）`, 'error');
+        } else if (errors.length) {
+          setStatus(`一部の翻訳に失敗しました（未翻訳: ${failedCount} 行）。${errors.join(' / ')}。該当行は原文のままです。`, 'error');
         } else {
           setStatus(`${translatable.length} 行の翻訳が完了しました。構造の整合性を検証しています…`, 'ok');
         }

@@ -46,14 +46,14 @@
       <label class="upload" id="dropZone" for="fileInput"><div><div class="upload-icon">⇧</div><strong>.srt ファイルをここへドロップ</strong><p>またはクリックしてファイルを選択</p></div></label>
       <input id="fileInput" type="file" accept=".srt,text/plain" />
       <div class="filebar" id="fileBar"><span class="fileicon">▤</span><div class="filemeta"><div class="filename" id="fileName"></div><div class="fileinfo" id="fileInfo"></div></div><button class="remove" id="removeFile" type="button">取り消す</button></div>
-      <div class="actions"><span class="notice">翻訳はブラウザから翻訳サービスへ送信されます。<br>機密性の高い字幕にはご注意ください。</span><button class="primary" id="translateBtn" type="button" disabled>日本語に翻訳する →</button></div>
+      <div class="actions"><span class="notice">翻訳は安全なサーバー経由でLLMへ送信されます。<br>台詞データの取り扱いにご注意ください。</span><button class="primary" id="translateBtn" type="button" disabled>AIで日本語に翻訳する →</button></div>
     </section>
     <section id="work" class="card">
       <div class="workspace"><div class="pane"><div class="pane-head"><h2>オリジナル</h2><span class="tag">変更不可</span></div><textarea id="sourceText" readonly spellcheck="false"></textarea></div><div class="pane"><div class="pane-head"><h2>日本語字幕</h2><span class="tag jp">編集できます</span></div><textarea id="translatedText" class="jp-area" spellcheck="false" placeholder="翻訳結果がここに表示されます"></textarea></div></div>
       <div class="status"><span id="statusMessage" class="status-message">ファイルを選択すると、ここで処理状況を表示します。</span><button class="download" id="downloadBtn" type="button">.srt をダウンロード</button></div>
     </section>
     <div class="integrity" id="integrity"></div>
-    <p class="hint">出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。右側の日本語字幕は必要に応じて手動で修正できます。</p>
+    <p class="hint">AIは前後の台詞を考慮して、自然な会話調の日本語に翻訳します。出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。</p>
   </main>
   <script>
     (() => {
@@ -103,24 +103,38 @@
         };
         reader.readAsText(file, 'utf-8');
       }
-      async function translateLine(text) {
-        if (!/[A-Za-z]/.test(text)) return text;
-        const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ja`;
-        const response = await fetch(url); if (!response.ok) throw new Error('翻訳サービスに接続できませんでした。');
-        const data = await response.json(); const result = data?.responseData?.translatedText;
-        if (!result || data?.responseStatus !== 200) throw new Error(data?.responseDetails || '翻訳サービスでエラーが発生しました。');
-        return result.replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+      async function translateBatch(items) {
+        let lastError = 'AI翻訳サービスに接続できませんでした。';
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const response = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items}) });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || `サーバーエラー（${response.status}）`);
+            if (!Array.isArray(data.translations)) throw new Error('AIの応答形式を確認できませんでした。');
+            const expected = new Set(items.map(item => item.line));
+            const received = new Map(data.translations.map(item => [item.line, item.text]));
+            if (received.size !== expected.size || [...expected].some(line => !received.has(line))) throw new Error('AIの翻訳結果に行の不足があります。');
+            if ([...received.values()].some(text => typeof text !== 'string' || /[\r\n]/.test(text))) throw new Error('AIの翻訳結果に不正な改行があります。');
+            return received;
+          } catch (error) { lastError = error.message || lastError; if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 1000)); }
+        }
+        throw new Error(lastError);
       }
       async function runTranslation() {
         const lines = splitLines(original), targets = subtitleLineIndexes(original);
         if (!targets.length) { setStatus('翻訳対象の英文字幕行を検出できませんでした。', 'error'); return; }
         translateBtn.disabled = true; downloadBtn.classList.remove('show'); integrity.classList.remove('show');
-        let completed = 0; const workers = Math.min(3, targets.length); let next = 0; const errors = [];
-        setStatus(`翻訳しています… 0 / ${targets.length} 行`);
-        const worker = async () => { while (next < targets.length) { const i = targets[next++]; try { lines[i] = await translateLine(lines[i]); } catch (e) { errors.push(`${i+1}行目`); } completed++; setStatus(`翻訳しています… ${completed} / ${targets.length} 行`); } };
-        await Promise.all(Array.from({length:workers}, worker));
+        const translatable = targets.filter(i => /[A-Za-z]/.test(lines[i])).map(i => ({line:i, text:lines[i]}));
+        const batches = []; for (let i=0; i<translatable.length; i+=24) batches.push(translatable.slice(i, i+24));
+        let completed = 0; const errors = [];
+        setStatus(`AIが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
+        for (let i=0; i<batches.length; i++) {
+          try { const results = await translateBatch(batches[i]); results.forEach((text, line) => { lines[line] = text; }); }
+          catch (error) { errors.push(`${batches[i][0].line+1}〜${batches[i].at(-1).line+1}行目: ${error.message}`); }
+          completed += batches[i].length; setStatus(`AIが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行`);
+        }
         translatedText.value = lines.join(newline); translateBtn.disabled = false;
-        if (errors.length) setStatus(`${errors.join('、')} の翻訳に失敗しました。該当行は原文のままです。`, 'error'); else setStatus(`${targets.length} 行を翻訳しました。出力前に整合性を確認します。`, 'ok');
+        if (errors.length) setStatus(`一部の翻訳に失敗しました。${errors.join(' / ')}。該当行は原文のままです。`, 'error'); else setStatus(`${translatable.length} 行をAI翻訳しました。出力前に整合性を確認します。`, 'ok');
         showValidation();
       }
       fileInput.addEventListener('change', e => loadFile(e.target.files[0]));

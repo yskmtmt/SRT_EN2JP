@@ -8,143 +8,375 @@
     :root { --bg:#f5f7fb; --ink:#182235; --muted:#6d7788; --line:#dfe5ef; --card:#fff; --navy:#172a4d; --blue:#316be8; --green:#18845a; --red:#c74444; }
     * { box-sizing:border-box; }
     body { margin:0; min-width:320px; color:var(--ink); font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; background:linear-gradient(145deg,#edf2ff 0,#f6f8fc 42%,#edf7f5 100%); }
-    header { padding:34px max(24px,calc((100vw - 1140px)/2)); display:flex; align-items:center; justify-content:space-between; }
+    header { padding:24px max(24px,calc((100vw - 1140px)/2)); display:flex; align-items:center; justify-content:space-between; }
     .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.3px; }
     .mark { width:36px; height:36px; display:grid; place-items:center; color:white; background:var(--blue); border-radius:11px; box-shadow:0 8px 18px #316be844; font-size:18px; }
     .badge { color:#315181; background:#e8efff; padding:6px 10px; border-radius:99px; font-size:12px; font-weight:700; }
-    main { max-width:1140px; padding:20px 24px 72px; margin:auto; }
-    .hero { text-align:center; max-width:680px; margin:24px auto 42px; }
-    h1 { font-size:clamp(28px,4.5vw,46px); letter-spacing:-1.8px; margin:0 0 14px; }
-    .hero p { margin:0; color:var(--muted); line-height:1.7; }
-    .steps { display:flex; justify-content:center; gap:0; margin:0 auto 28px; color:var(--muted); font-size:13px; }
+    main { max-width:1140px; padding:10px 24px 72px; margin:auto; }
+    .steps { display:flex; justify-content:center; gap:0; margin:12px auto 26px; color:var(--muted); font-size:13px; }
     .step { display:flex; align-items:center; gap:8px; }
     .step:not(:last-child)::after { content:""; width:55px; height:1px; margin:0 15px; background:#cfd7e5; }
     .num { display:grid; place-items:center; width:23px; height:23px; color:#fff; font-size:12px; font-weight:800; background:#8090ab; border-radius:50%; }
     .step.active { color:var(--blue); font-weight:700; }.step.active .num { background:var(--blue); }
     .card { background:var(--card); border:1px solid #e4e9f1; border-radius:20px; box-shadow:0 18px 44px #15284c0d; overflow:hidden; }
-    .upload { min-height:232px; padding:34px; display:grid; place-items:center; border:2px dashed #b9c8e6; border-radius:15px; margin:22px; cursor:pointer; transition:.18s; background:#fbfcff; text-align:center; }
+    .upload { min-height:200px; padding:30px; display:grid; place-items:center; border:2px dashed #b9c8e6; border-radius:15px; margin:20px; cursor:pointer; transition:.18s; background:#fbfcff; text-align:center; }
     .upload:hover,.upload.drag { border-color:var(--blue); background:#f4f7ff; }.upload-icon { font-size:35px; margin-bottom:8px; }.upload strong { font-size:17px; }.upload p { font-size:13px; color:var(--muted); margin:7px 0 0; }
     input[type=file] { display:none; }
-    .filebar { display:none; align-items:center; gap:12px; padding:14px 20px; margin:0 22px 22px; border:1px solid var(--line); border-radius:12px; background:#f9fbff; }.filebar.show { display:flex; }
+    .filebar { display:none; align-items:center; gap:12px; padding:14px 20px; margin:0 20px 20px; border:1px solid var(--line); border-radius:12px; background:#f9fbff; }.filebar.show { display:flex; }
     .fileicon { font-size:25px; }.filemeta { min-width:0; flex:1; }.filename { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-weight:700; font-size:14px; }.fileinfo { margin-top:3px; color:var(--muted); font-size:12px; }
     button { font:inherit; cursor:pointer; border:0; border-radius:10px; font-weight:750; transition:.18s; }.remove { padding:7px 10px; color:#65718a; background:transparent; }.remove:hover { color:var(--red); background:#fff0f0; }
-    .actions { display:flex; justify-content:space-between; align-items:center; gap:15px; padding:19px 22px; border-top:1px solid var(--line); }.notice { font-size:12px; line-height:1.5; color:var(--muted); }.primary { padding:12px 19px; background:var(--blue); color:#fff; box-shadow:0 6px 13px #316be83c; }.primary:disabled { cursor:not-allowed; opacity:.48; box-shadow:none; }.primary:not(:disabled):hover { transform:translateY(-1px); background:#245bd5; }
-    #work { display:none; margin-top:24px; }.workspace { display:grid; grid-template-columns:1fr 1fr; gap:0; }.pane { min-width:0; }.pane:first-child { border-right:1px solid var(--line); }.pane-head { padding:17px 21px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }.pane h2 { margin:0; font-size:15px; }.tag { color:#50617d; background:#edf1f7; border-radius:99px; padding:4px 8px; font-size:11px; font-weight:700; }.tag.jp { color:#087051; background:#e3f7ef; }
-    textarea { display:block; width:100%; height:370px; resize:vertical; padding:17px 20px; border:0; outline:0; color:#26324a; background:#fcfdff; font:13px/1.68 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }.jp-area { background:#fbfefc; }
-    .status { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; border-top:1px solid var(--line); }.status-message { font-size:13px; color:var(--muted); }.status-message.ok { color:var(--green); font-weight:700; }.status-message.error { color:var(--red); font-weight:700; }.download { display:none; padding:11px 16px; color:#fff; background:var(--green); white-space:nowrap; }.download.show { display:block; }.download:hover { background:#116f4b; }
-    .integrity { display:none; margin-top:16px; padding:15px 17px; border:1px solid #bde7d4; border-radius:13px; color:#166648; background:#f0fbf6; font-size:13px; line-height:1.55; }.integrity.show { display:block; }.integrity b { display:block; margin-bottom:3px; }
-    .hint { margin:20px auto 0; max-width:860px; font-size:12px; line-height:1.65; color:var(--muted); text-align:center; }
-    @media (max-width:700px) { header { padding:20px 18px; } main{padding:8px 16px 45px}.hero{margin:22px auto 28px}.steps{font-size:11px}.step:not(:last-child)::after{width:18px;margin:0 7px}.workspace{grid-template-columns:1fr}.pane:first-child{border-right:0;border-bottom:1px solid var(--line)}textarea{height:260px}.actions{align-items:flex-start;flex-direction:column}.primary{width:100%}.status{align-items:flex-start;flex-direction:column}.download{width:100%} }
+    .actions { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; padding:18px 22px; border-top:1px solid var(--line); }
+    .notice { font-size:12px; line-height:1.5; color:var(--muted); }
+    .controls { display:flex; align-items:center; gap:12px; margin-left:auto; }
+    .engine { display:flex; align-items:center; gap:8px; }
+    .engine label { font-size:12px; color:var(--muted); font-weight:700; }
+    .engine select { padding:9px 12px; border:1px solid var(--line); border-radius:9px; background:white; font:inherit; font-size:13px; font-weight:600; color:var(--ink); outline:none; }
+    .engine select:focus { border-color:var(--blue); }
+    .primary { padding:12px 20px; background:var(--blue); color:#fff; box-shadow:0 6px 13px #316be83c; white-space:nowrap; }
+    .primary:disabled { cursor:not-allowed; opacity:.48; box-shadow:none; }
+    .primary:not(:disabled):hover { transform:translateY(-1px); background:#245bd5; }
+    #work { display:none; margin-top:24px; }
+    .workspace { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+    .pane { min-width:0; }
+    .pane:first-child { border-right:1px solid var(--line); }
+    .pane-head { padding:15px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+    .pane h2 { margin:0; font-size:15px; }
+    .tag { color:#50617d; background:#edf1f7; border-radius:99px; padding:4px 8px; font-size:11px; font-weight:700; }
+    .tag.jp { color:#087051; background:#e3f7ef; }
+    textarea { display:block; width:100%; height:370px; resize:vertical; padding:17px 20px; border:0; outline:0; color:#26324a; background:#fcfdff; font:13px/1.68 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }
+    .jp-area { background:#fbfefc; }
+    .status { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; border-top:1px solid var(--line); }
+    .status-left { display:flex; flex-direction:column; gap:4px; }
+    .status-message { font-size:13px; color:var(--muted); }
+    .status-message.ok { color:var(--green); font-weight:700; }
+    .status-message.error { color:var(--red); font-weight:700; }
+    .token-usage { font-size:12px; color:#4a5b78; font-weight:600; display:none; }
+    .token-usage.show { display:inline-block; }
+    .download { display:none; padding:11px 16px; color:#fff; background:var(--green); white-space:nowrap; }
+    .download.show { display:block; }
+    .download:hover { background:#116f4b; }
+    .integrity { display:none; margin-top:16px; padding:15px 17px; border:1px solid #bde7d4; border-radius:13px; color:#166648; background:#f0fbf6; font-size:13px; line-height:1.55; }
+    .integrity.show { display:block; }
+    .integrity b { display:block; margin-bottom:3px; }
+    .footer-info { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:18px; padding:0 4px; font-size:12px; color:var(--muted); }
+    .quota a { color:var(--blue); text-decoration:none; font-weight:600; }
+    .quota a:hover { text-decoration:underline; }
+    .hint { margin:18px auto 0; max-width:860px; font-size:12px; line-height:1.65; color:var(--muted); text-align:center; }
+    @media (max-width:768px) {
+      header { padding:20px 18px; }
+      main { padding:8px 16px 45px; }
+      .steps { font-size:11px; }
+      .step:not(:last-child)::after { width:18px; margin:0 7px; }
+      .workspace { grid-template-columns:1fr; }
+      .pane:first-child { border-right:0; border-bottom:1px solid var(--line); }
+      textarea { height:260px; }
+      .actions { align-items:stretch; flex-direction:column; }
+      .controls { flex-direction:column; align-items:stretch; margin-left:0; }
+      .primary { width:100%; }
+      .status { align-items:flex-start; flex-direction:column; }
+      .download { width:100%; }
+      .footer-info { flex-direction:column; align-items:flex-start; }
+    }
   </style>
 </head>
 <body>
-  <header><div class="brand"><div class="mark">字幕</div><span>SRT EN → JP</span></div><span class="badge">構造保護モード</span></header>
+  <header>
+    <div class="brand">
+      <div class="mark">字幕</div>
+      <span>SRT EN → JP</span>
+    </div>
+    <span class="badge">Gemini 構造保護モード</span>
+  </header>
   <main>
-    <section class="hero"><h1>字幕を、崩さず日本語へ。</h1><p>SRTの番号・タイムコード・改行構成をそのまま維持し、英文の字幕行だけを日本語に置き換えます。</p></section>
-    <div class="steps"><div class="step active"><span class="num">1</span>ファイルを選択</div><div class="step"><span class="num">2</span>翻訳・確認</div><div class="step"><span class="num">3</span>ダウンロード</div></div>
+    <div class="steps">
+      <div class="step active"><span class="num">1</span>ファイルを選択</div>
+      <div class="step"><span class="num">2</span>翻訳・確認</div>
+      <div class="step"><span class="num">3</span>ダウンロード</div>
+    </div>
     <section class="card" id="uploadCard">
-      <label class="upload" id="dropZone" for="fileInput"><div><div class="upload-icon">⇧</div><strong>.srt ファイルをここへドロップ</strong><p>またはクリックしてファイルを選択</p></div></label>
+      <label class="upload" id="dropZone" for="fileInput">
+        <div>
+          <div class="upload-icon">⇧</div>
+          <strong>.srt ファイルをここへドロップ</strong>
+          <p>またはクリックしてファイルを選択</p>
+        </div>
+      </label>
       <input id="fileInput" type="file" accept=".srt,text/plain" />
-      <div class="filebar" id="fileBar"><span class="fileicon">▤</span><div class="filemeta"><div class="filename" id="fileName"></div><div class="fileinfo" id="fileInfo"></div></div><button class="remove" id="removeFile" type="button">取り消す</button></div>
-      <div class="actions"><span class="notice">翻訳は安全なサーバー経由でLLMへ送信されます。<br>台詞データの取り扱いにご注意ください。</span><button class="primary" id="translateBtn" type="button" disabled>AIで日本語に翻訳する →</button></div>
+      <div class="filebar" id="fileBar">
+        <span class="fileicon">▤</span>
+        <div class="filemeta">
+          <div class="filename" id="fileName"></div>
+          <div class="fileinfo" id="fileInfo"></div>
+        </div>
+        <button class="remove" id="removeFile" type="button">取り消す</button>
+      </div>
+      <div class="actions">
+        <span class="notice">翻訳は安全なサーバー経由でGemini APIへ送信されます。<br>字幕データの取り扱いにご注意ください。</span>
+        <div class="controls">
+          <div class="engine">
+            <label for="modelSelect">翻訳モデル:</label>
+            <select id="modelSelect">
+              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (推奨・標準)</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (高精度)</option>
+              <option value="gemini-3.7-flash">Gemini 3.7 Flash (最新)</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (高速)</option>
+            </select>
+          </div>
+          <button class="primary" id="translateBtn" type="button" disabled>AIで日本語に翻訳する →</button>
+        </div>
+      </div>
     </section>
     <section id="work" class="card">
-      <div class="workspace"><div class="pane"><div class="pane-head"><h2>オリジナル</h2><span class="tag">変更不可</span></div><textarea id="sourceText" readonly spellcheck="false"></textarea></div><div class="pane"><div class="pane-head"><h2>日本語字幕</h2><span class="tag jp">編集できます</span></div><textarea id="translatedText" class="jp-area" spellcheck="false" placeholder="翻訳結果がここに表示されます"></textarea></div></div>
-      <div class="status"><span id="statusMessage" class="status-message">ファイルを選択すると、ここで処理状況を表示します。</span><button class="download" id="downloadBtn" type="button">.srt をダウンロード</button></div>
+      <div class="workspace">
+        <div class="pane">
+          <div class="pane-head">
+            <h2>オリジナル</h2>
+            <span class="tag">変更不可</span>
+          </div>
+          <textarea id="sourceText" readonly spellcheck="false"></textarea>
+        </div>
+        <div class="pane">
+          <div class="pane-head">
+            <h2>日本語字幕</h2>
+            <span class="tag jp">編集できます</span>
+          </div>
+          <textarea id="translatedText" class="jp-area" spellcheck="false" placeholder="翻訳結果がここに表示されます"></textarea>
+        </div>
+      </div>
+      <div class="status">
+        <div class="status-left">
+          <span id="statusMessage" class="status-message">ファイルを選択すると、ここで処理状況を表示します。</span>
+          <span id="tokenUsage" class="token-usage"></span>
+        </div>
+        <button class="download" id="downloadBtn" type="button">.srt をダウンロード</button>
+      </div>
     </section>
     <div class="integrity" id="integrity"></div>
-    <p class="hint">AIは前後の台詞を考慮して、自然な会話調の日本語に翻訳します。出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。</p>
+    <div class="footer-info">
+      <div class="quota" id="quotaInfo">API無料枠の残量確認: <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer">Google AI Studio (Usage) ↗</a></div>
+    </div>
+    <p class="hint">Gemini AIは前後の台詞を考慮して、自然な会話調・呼称統一・短く簡潔な映像字幕に翻訳します。出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。</p>
   </main>
   <script>
     (() => {
       const el = id => document.getElementById(id);
       const fileInput = el('fileInput'), dropZone = el('dropZone'), fileBar = el('fileBar'), fileName = el('fileName'), fileInfo = el('fileInfo');
-      const translateBtn = el('translateBtn'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText'), status = el('statusMessage'), integrity = el('integrity'), downloadBtn = el('downloadBtn');
+      const translateBtn = el('translateBtn'), modelSelect = el('modelSelect'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText');
+      const status = el('statusMessage'), tokenUsage = el('tokenUsage'), integrity = el('integrity'), downloadBtn = el('downloadBtn');
       let original = '', fileBaseName = 'translated.srt', newline = '\n';
+      let totalUsage = { prompt: 0, candidates: 0, total: 0 };
       const timecode = /^\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}(?:\s+.*)?\s*$/;
       const cueNumber = /^\s*\d+\s*$/;
-      const setStatus = (message, kind='') => { status.textContent = message; status.className = `status-message ${kind}`; };
+
+      const setStatus = (message, kind='') => {
+        status.textContent = message;
+        status.className = `status-message ${kind}`;
+      };
+
+      const updateTokenDisplay = () => {
+        if (totalUsage.total > 0) {
+          tokenUsage.textContent = `消費推定トークン数: ${totalUsage.total.toLocaleString()} tokens (入力: ${totalUsage.prompt.toLocaleString()} / 出力: ${totalUsage.candidates.toLocaleString()})`;
+          tokenUsage.classList.add('show');
+        } else {
+          tokenUsage.classList.remove('show');
+        }
+      };
+
       const splitLines = text => text.split(/\r\n|\n|\r/);
+
       function subtitleLineIndexes(text) {
-        const lines = splitLines(text); const indexes = []; let hasTimecode = false;
-        for (let i=0; i<lines.length; i++) {
-          if (timecode.test(lines[i])) { hasTimecode = true; continue; }
+        const lines = splitLines(text);
+        const indexes = [];
+        let hasTimecode = false;
+        for (let i = 0; i < lines.length; i++) {
+          if (timecode.test(lines[i])) {
+            hasTimecode = true;
+            continue;
+          }
           if (!hasTimecode || !lines[i].trim() || cueNumber.test(lines[i])) continue;
-          // A line following a time code, up to the blank separator, is subtitle text.
           indexes.push(i);
         }
         return indexes;
       }
+
       function validate(candidate) {
         const a = splitLines(original), b = splitLines(candidate);
-        if (a.length !== b.length) return {ok:false, reason:`行数が一致しません（元: ${a.length} 行 / 出力: ${b.length} 行）`};
+        if (a.length !== b.length) return { ok: false, reason: `行数が一致しません（元: ${a.length} 行 / 出力: ${b.length} 行）` };
         const permitted = new Set(subtitleLineIndexes(original));
-        for (let i=0; i<a.length; i++) {
-          if (!permitted.has(i) && a[i] !== b[i]) return {ok:false, reason:`${i+1}行目の字幕テキスト以外の内容が変更されています。`};
+        for (let i = 0; i < a.length; i++) {
+          if (!permitted.has(i) && a[i] !== b[i]) return { ok: false, reason: `${i + 1}行目の字幕テキスト以外の内容が変更されています。` };
         }
-        return {ok:true, reason:`検証済み：${a.length}行、タイムコード・字幕番号・空行位置はオリジナルと完全一致しています。`};
+        return { ok: true, reason: `検証済み：${a.length}行、タイムコード・字幕番号・空行位置はオリジナルと完全一致しています。` };
       }
+
       function showValidation() {
         if (!original) return false;
         const result = validate(translatedText.value);
-        integrity.classList.add('show'); integrity.innerHTML = result.ok ? `<b>✓ 構造の整合性を確認しました</b>${result.reason}` : `<b>⚠ 出力できません</b>${result.reason}`;
-        integrity.style.borderColor = result.ok ? '#bde7d4' : '#f2c5c5'; integrity.style.background = result.ok ? '#f0fbf6' : '#fff6f6'; integrity.style.color = result.ok ? '#166648' : '#a13434';
+        integrity.classList.add('show');
+        integrity.innerHTML = result.ok
+          ? `<b>✓ 構造の整合性を確認しました</b>${result.reason}`
+          : `<b>⚠ 出力できません</b>${result.reason}`;
+        integrity.style.borderColor = result.ok ? '#bde7d4' : '#f2c5c5';
+        integrity.style.background = result.ok ? '#f0fbf6' : '#fff6f6';
+        integrity.style.color = result.ok ? '#166648' : '#a13434';
         downloadBtn.classList.toggle('show', result.ok && !!translatedText.value);
         return result.ok;
       }
+
       function loadFile(file) {
         if (!file) return;
-        if (!/\.srt$/i.test(file.name)) { setStatus('SRT形式のファイルを選択してください。', 'error'); return; }
+        if (!/\.srt$/i.test(file.name)) {
+          setStatus('SRT形式のファイルを選択してください。', 'error');
+          return;
+        }
         const reader = new FileReader();
         reader.onload = () => {
-          original = String(reader.result).replace(/^\uFEFF/, ''); newline = original.includes('\r\n') ? '\r\n' : '\n';
-          fileBaseName = file.name.replace(/\.srt$/i, '') + '_ja.srt'; sourceText.value = original; translatedText.value = '';
-          fileName.textContent = file.name; fileInfo.textContent = `${(file.size/1024).toFixed(1)} KB ・ ${splitLines(original).length} 行`; fileBar.classList.add('show'); translateBtn.disabled = false; work.style.display = 'block'; integrity.classList.remove('show'); downloadBtn.classList.remove('show'); setStatus('準備完了。翻訳を開始できます。');
+          original = String(reader.result).replace(/^\uFEFF/, '');
+          newline = original.includes('\r\n') ? '\r\n' : '\n';
+          fileBaseName = file.name.replace(/\.srt$/i, '') + '_ja.srt';
+          sourceText.value = original;
+          translatedText.value = '';
+          totalUsage = { prompt: 0, candidates: 0, total: 0 };
+          updateTokenDisplay();
+          fileName.textContent = file.name;
+          fileInfo.textContent = `${(file.size / 1024).toFixed(1)} KB ・ ${splitLines(original).length} 行`;
+          fileBar.classList.add('show');
+          translateBtn.disabled = false;
+          work.style.display = 'block';
+          integrity.classList.remove('show');
+          downloadBtn.classList.remove('show');
+          setStatus('準備完了。翻訳を開始できます。');
         };
         reader.readAsText(file, 'utf-8');
       }
-      async function translateBatch(items) {
+
+      async function translateBatch(items, model) {
         let lastError = 'AI翻訳サービスに接続できませんでした。';
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
-            const response = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({items}) });
+            const response = await fetch('/api/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items, model })
+            });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.error || `サーバーエラー（${response.status}）`);
             if (!Array.isArray(data.translations)) throw new Error('AIの応答形式を確認できませんでした。');
+
             const expected = new Set(items.map(item => item.line));
             const received = new Map(data.translations.map(item => [item.line, item.text]));
-            if (received.size !== expected.size || [...expected].some(line => !received.has(line))) throw new Error('AIの翻訳結果に行の不足があります。');
-            if ([...received.values()].some(text => typeof text !== 'string' || /[\r\n]/.test(text))) throw new Error('AIの翻訳結果に不正な改行があります。');
+            if (received.size !== expected.size || [...expected].some(line => !received.has(line))) {
+              throw new Error('AIの翻訳結果に行の不足があります。');
+            }
+            if ([...received.values()].some(text => typeof text !== 'string' || /[\r\n]/.test(text))) {
+              throw new Error('AIの翻訳結果に不正な改行があります。');
+            }
+
+            if (data.usage) {
+              totalUsage.prompt += (data.usage.promptTokenCount || 0);
+              totalUsage.candidates += (data.usage.candidatesTokenCount || 0);
+              totalUsage.total += (data.usage.totalTokenCount || 0);
+              updateTokenDisplay();
+            }
+
             return received;
-          } catch (error) { lastError = error.message || lastError; if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 1000)); }
+          } catch (error) {
+            lastError = error.message || lastError;
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+          }
         }
         throw new Error(lastError);
       }
+
       async function runTranslation() {
-        const lines = splitLines(original), targets = subtitleLineIndexes(original);
-        if (!targets.length) { setStatus('翻訳対象の英文字幕行を検出できませんでした。', 'error'); return; }
-        translateBtn.disabled = true; downloadBtn.classList.remove('show'); integrity.classList.remove('show');
-        const translatable = targets.filter(i => /[A-Za-z]/.test(lines[i])).map(i => ({line:i, text:lines[i]}));
-        const batches = []; for (let i=0; i<translatable.length; i+=24) batches.push(translatable.slice(i, i+24));
-        let completed = 0; const errors = [];
-        setStatus(`AIが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
-        for (let i=0; i<batches.length; i++) {
-          try { const results = await translateBatch(batches[i]); results.forEach((text, line) => { lines[line] = text; }); }
-          catch (error) { errors.push(`${batches[i][0].line+1}〜${batches[i].at(-1).line+1}行目: ${error.message}`); }
-          completed += batches[i].length; setStatus(`AIが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行`);
+        const lines = splitLines(original);
+        const targets = subtitleLineIndexes(original);
+        if (!targets.length) {
+          setStatus('翻訳対象の英文字幕行を検出できませんでした。', 'error');
+          return;
         }
-        translatedText.value = lines.join(newline); translateBtn.disabled = false;
-        if (errors.length) setStatus(`一部の翻訳に失敗しました。${errors.join(' / ')}。該当行は原文のままです。`, 'error'); else setStatus(`${translatable.length} 行をAI翻訳しました。出力前に整合性を確認します。`, 'ok');
+
+        translateBtn.disabled = true;
+        modelSelect.disabled = true;
+        downloadBtn.classList.remove('show');
+        integrity.classList.remove('show');
+        totalUsage = { prompt: 0, candidates: 0, total: 0 };
+        updateTokenDisplay();
+
+        const selectedModel = modelSelect.value;
+        const translatable = targets.filter(i => /[A-Za-z]/.test(lines[i])).map(i => ({ line: i, text: lines[i] }));
+        const batches = [];
+        for (let i = 0; i < translatable.length; i += 24) {
+          batches.push(translatable.slice(i, i + 24));
+        }
+
+        let completed = 0;
+        const errors = [];
+        setStatus(`Geminiが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
+
+        for (let i = 0; i < batches.length; i++) {
+          try {
+            const results = await translateBatch(batches[i], selectedModel);
+            results.forEach((text, line) => { lines[line] = text; });
+          } catch (error) {
+            errors.push(`${batches[i][0].line + 1}〜${batches[i].at(-1).line + 1}行目: ${error.message}`);
+          }
+          completed += batches[i].length;
+          setStatus(`Geminiが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行`);
+        }
+
+        translatedText.value = lines.join(newline);
+        translateBtn.disabled = false;
+        modelSelect.disabled = false;
+
+        if (errors.length) {
+          setStatus(`一部の翻訳に失敗しました。${errors.join(' / ')}。該当行は原文のままです。`, 'error');
+        } else {
+          setStatus(`${translatable.length} 行の翻訳が完了しました。構造の整合性を検証しています…`, 'ok');
+        }
         showValidation();
       }
+
       fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
-      ['dragenter','dragover'].forEach(type => dropZone.addEventListener(type, e => { e.preventDefault(); dropZone.classList.add('drag'); }));
-      ['dragleave','drop'].forEach(type => dropZone.addEventListener(type, e => { e.preventDefault(); dropZone.classList.remove('drag'); }));
+      ['dragenter', 'dragover'].forEach(type => dropZone.addEventListener(type, e => {
+        e.preventDefault();
+        dropZone.classList.add('drag');
+      }));
+      ['dragleave', 'drop'].forEach(type => dropZone.addEventListener(type, e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag');
+      }));
       dropZone.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
-      el('removeFile').addEventListener('click', () => { original=''; fileInput.value=''; fileBar.classList.remove('show'); translateBtn.disabled=true; work.style.display='none'; integrity.classList.remove('show'); });
+
+      el('removeFile').addEventListener('click', () => {
+        original = '';
+        fileInput.value = '';
+        fileBar.classList.remove('show');
+        translateBtn.disabled = true;
+        work.style.display = 'none';
+        integrity.classList.remove('show');
+        totalUsage = { prompt: 0, candidates: 0, total: 0 };
+        updateTokenDisplay();
+      });
+
       translateBtn.addEventListener('click', runTranslation);
-      translatedText.addEventListener('input', () => { if (translatedText.value) { setStatus('編集内容を検証しました。'); showValidation(); } });
-      downloadBtn.addEventListener('click', () => { if (!showValidation()) return; const blob = new Blob([translatedText.value], {type:'application/x-subrip;charset=utf-8'}); const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fileBaseName; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000); });
+
+      translatedText.addEventListener('input', () => {
+        if (translatedText.value) {
+          setStatus('編集内容を検証しました。');
+          showValidation();
+        }
+      });
+
+      downloadBtn.addEventListener('click', () => {
+        if (!showValidation()) return;
+        const blob = new Blob([translatedText.value], { type: 'application/x-subrip;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileBaseName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      });
     })();
   </script>
 </body>

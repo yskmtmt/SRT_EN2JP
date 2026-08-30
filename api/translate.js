@@ -1,4 +1,4 @@
-const MAX_ITEMS = 24;
+const MAX_ITEMS = 72;
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const ALLOWED_MODELS = new Set([
   'gemini-3.7-flash',

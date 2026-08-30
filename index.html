@@ -250,6 +250,10 @@
         reader.readAsText(file, 'utf-8');
       }
 
+      const BATCH_SIZE = 72;
+      const MIN_REQUEST_INTERVAL_MS = 6200; // RPM <= 10 (1分間最大約9.6リクエスト) を確実に維持
+      let lastRequestStartTime = 0;
+
       async function translateBatch(items, model) {
         let lastError = 'AI翻訳サービスに接続できませんでした。';
         for (let attempt = 1; attempt <= 3; attempt++) {
@@ -260,7 +264,18 @@
               body: JSON.stringify({ items, model })
             });
             const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || `サーバーエラー（${response.status}）`);
+            if (!response.ok) {
+              const msg = data.error || `サーバーエラー（${response.status}）`;
+              if (response.status === 429 || /quota|rate limit/i.test(msg)) {
+                // レート制限の場合は長めに待機
+                if (attempt < 3) {
+                  setStatus(`APIレート制限に到達しました。安全のため ${attempt * 10} 秒待機して再試行します…`, 'error');
+                  await new Promise(resolve => setTimeout(resolve, attempt * 10000));
+                  continue;
+                }
+              }
+              throw new Error(msg);
+            }
             if (!Array.isArray(data.translations)) throw new Error('AIの応答形式を確認できませんでした。');
 
             const expected = new Set(items.map(item => item.line));
@@ -282,7 +297,7 @@
             return received;
           } catch (error) {
             lastError = error.message || lastError;
-            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+            if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 2000));
           }
         }
         throw new Error(lastError);
@@ -306,8 +321,8 @@
         const selectedModel = modelSelect.value;
         const translatable = targets.filter(i => /[A-Za-z]/.test(lines[i])).map(i => ({ line: i, text: lines[i] }));
         const batches = [];
-        for (let i = 0; i < translatable.length; i += 24) {
-          batches.push(translatable.slice(i, i + 24));
+        for (let i = 0; i < translatable.length; i += BATCH_SIZE) {
+          batches.push(translatable.slice(i, i + BATCH_SIZE));
         }
 
         let completed = 0;
@@ -315,10 +330,26 @@
         const MAX_FAILED_LINES = 100;
         let isAborted = false;
         const errors = [];
+        lastRequestStartTime = 0;
+
         setStatus(`Geminiが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
 
         for (let i = 0; i < batches.length; i++) {
           const currentBatch = batches[i];
+
+          // RPM <= 10 を維持するためのリクエスト間隔制御
+          const now = Date.now();
+          const elapsed = now - lastRequestStartTime;
+          if (lastRequestStartTime > 0 && elapsed < MIN_REQUEST_INTERVAL_MS) {
+            const waitMs = MIN_REQUEST_INTERVAL_MS - elapsed;
+            const waitSec = (waitMs / 1000).toFixed(1);
+            setStatus(`Gemini APIレート制限（RPM ≤ 10）を遵守中… 次のリクエストまで待機中 (${waitSec}秒)`);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+          }
+          lastRequestStartTime = Date.now();
+
+          setStatus(`Geminiが文脈を考慮して翻訳中… (${completed + 1}〜${Math.min(completed + currentBatch.length, translatable.length)} / ${translatable.length} 行)`);
+
           try {
             const results = await translateBatch(currentBatch, selectedModel);
             results.forEach((text, line) => { lines[line] = text; });
@@ -331,7 +362,7 @@
             }
           }
           completed += currentBatch.length;
-          setStatus(`Geminiが文脈を考慮して翻訳しています… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
+          setStatus(`Geminiが文脈を考慮して翻訳中… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
         }
 
         translatedText.value = lines.join(newline);

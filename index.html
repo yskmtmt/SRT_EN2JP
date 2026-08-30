@@ -250,7 +250,7 @@
         reader.readAsText(file, 'utf-8');
       }
 
-      const BATCH_SIZE = 72;
+      const BATCH_SIZE = 40;
       const MIN_REQUEST_INTERVAL_MS = 6200; // RPM <= 10 (1分間最大約9.6リクエスト) を確実に維持
       let lastRequestStartTime = 0;
 
@@ -265,7 +265,7 @@
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-              const msg = data.error || `サーバーエラー（${response.status}）`;
+              const msg = data.error || `サーバーエラー（HTTP ${response.status}）`;
               if (response.status === 429 || /quota|rate limit/i.test(msg)) {
                 // レート制限の場合は長めに待機
                 if (attempt < 3) {
@@ -276,15 +276,15 @@
               }
               throw new Error(msg);
             }
-            if (!Array.isArray(data.translations)) throw new Error('AIの応答形式を確認できませんでした。');
-
-            const expected = new Set(items.map(item => item.line));
-            const received = new Map(data.translations.map(item => [item.line, item.text]));
-            if (received.size !== expected.size || [...expected].some(line => !received.has(line))) {
-              throw new Error('AIの翻訳結果に行の不足があります。');
+            if (!Array.isArray(data.translations) || data.translations.length === 0) {
+              throw new Error('AIの応答に有効な翻訳行が含まれていませんでした。');
             }
-            if ([...received.values()].some(text => typeof text !== 'string' || /[\r\n]/.test(text))) {
-              throw new Error('AIの翻訳結果に不正な改行があります。');
+
+            const received = new Map();
+            for (const item of data.translations) {
+              if (item && Number.isInteger(item.line) && typeof item.text === 'string') {
+                received.set(item.line, item.text);
+              }
             }
 
             if (data.usage) {
@@ -352,15 +352,23 @@
 
           try {
             const results = await translateBatch(currentBatch, selectedModel);
-            results.forEach((text, line) => { lines[line] = text; });
+            for (const item of currentBatch) {
+              if (results.has(item.line)) {
+                lines[item.line] = results.get(item.line);
+              } else {
+                failedCount++;
+              }
+            }
           } catch (error) {
             failedCount += currentBatch.length;
             errors.push(`${currentBatch[0].line + 1}〜${currentBatch.at(-1).line + 1}行目: ${error.message}`);
-            if (failedCount > MAX_FAILED_LINES) {
-              isAborted = true;
-              break;
-            }
           }
+
+          if (failedCount > MAX_FAILED_LINES) {
+            isAborted = true;
+            break;
+          }
+
           completed += currentBatch.length;
           setStatus(`Geminiが文脈を考慮して翻訳中… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
         }

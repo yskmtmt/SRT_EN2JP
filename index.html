@@ -374,15 +374,65 @@
         }
 
         translatedText.value = lines.join(newline);
+
+        // --- 後処理（取りこぼし・英文残存行の自動回収・再翻訳フェーズ） ---
+        if (!isAborted) {
+          const missedItems = translatable.filter(item => {
+            const cur = lines[item.line];
+            return cur === item.text || /[A-Za-z]{2,}/.test(cur);
+          });
+
+          if (missedItems.length > 0 && missedItems.length <= MAX_FAILED_LINES) {
+            setStatus(`未翻訳・英文が残った ${missedItems.length} 行を自動回収・再翻訳しています…`);
+            const retryBatches = [];
+            for (let i = 0; i < missedItems.length; i += 20) {
+              retryBatches.push(missedItems.slice(i, i + 20));
+            }
+
+            for (let i = 0; i < retryBatches.length; i++) {
+              const retryBatch = retryBatches[i];
+              const now = Date.now();
+              const elapsed = now - lastRequestStartTime;
+              if (lastRequestStartTime > 0 && elapsed < MIN_REQUEST_INTERVAL_MS) {
+                const waitMs = MIN_REQUEST_INTERVAL_MS - elapsed;
+                setStatus(`未翻訳行の自動回収中… 次のリクエストまで待機中 (${(waitMs / 1000).toFixed(1)}秒)`);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
+              }
+              lastRequestStartTime = Date.now();
+
+              setStatus(`未翻訳行を再翻訳中… (${i * 20 + 1}〜${Math.min((i + 1) * 20, missedItems.length)} / ${missedItems.length} 行)`);
+              try {
+                const results = await translateBatch(retryBatch, selectedModel);
+                for (const item of retryBatch) {
+                  if (results.has(item.line)) {
+                    lines[item.line] = results.get(item.line);
+                  }
+                }
+              } catch (e) {
+                // 自動回収のリトライ失敗は許容
+              }
+            }
+            translatedText.value = lines.join(newline);
+          }
+        }
+
         translateBtn.disabled = false;
         modelSelect.disabled = false;
 
+        // 最終チェック
+        const finalMissed = translatable.filter(item => {
+          const cur = lines[item.line];
+          return cur === item.text || /[A-Za-z]{2,}/.test(cur);
+        });
+
         if (isAborted) {
           setStatus(`【処理中断】エラーにより未翻訳（原文のまま）となった行が100行を超えたため（未翻訳: ${failedCount} 行）、安全のため処理を停止しました。最新のエラー: ${errors.at(-1) || '通信エラー'}（該当行までは反映済みです）`, 'error');
-        } else if (errors.length) {
-          setStatus(`一部の翻訳に失敗しました（未翻訳: ${failedCount} 行）。${errors.join(' / ')}。該当行は原文のままです。`, 'error');
+        } else if (finalMissed.length > 0) {
+          const sampleLines = finalMissed.slice(0, 5).map(x => `${x.line + 1}行目`).join('、');
+          const more = finalMissed.length > 5 ? ' など' : '';
+          setStatus(`${translatable.length} 行の翻訳を完了しました（英文残存: ${finalMissed.length}行 → ${sampleLines}${more}。右側の画面で直接手動修正できます）。`, 'ok');
         } else {
-          setStatus(`${translatable.length} 行の翻訳が完了しました。構造の整合性を検証しています…`, 'ok');
+          setStatus(`${translatable.length} 行すべての翻訳・自動補正が完了しました。構造の整合性を検証しています…`, 'ok');
         }
         showValidation();
       }

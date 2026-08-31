@@ -39,10 +39,12 @@
     .workspace { display:grid; grid-template-columns:1fr 1fr; gap:0; }
     .pane { min-width:0; }
     .pane:first-child { border-right:1px solid var(--line); }
-    .pane-head { padding:15px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
+    .pane-head { padding:13px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--line); }
+    .pane-title { display:flex; align-items:center; gap:8px; }
     .pane h2 { margin:0; font-size:15px; }
     .tag { color:#50617d; background:#edf1f7; border-radius:99px; padding:4px 8px; font-size:11px; font-weight:700; }
     .tag.jp { color:#087051; background:#e3f7ef; }
+    .line-badge { font-size:11px; color:#2c4368; background:#edf3fc; border:1px solid #d0deee; border-radius:6px; padding:3px 8px; font-weight:700; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; white-space:nowrap; }
     textarea { display:block; width:100%; height:370px; resize:vertical; padding:17px 20px; border:0; outline:0; color:#26324a; background:#fcfdff; font:13px/1.68 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }
     .jp-area { background:#fbfefc; }
     .status { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; border-top:1px solid var(--line); }
@@ -130,15 +132,21 @@
       <div class="workspace">
         <div class="pane">
           <div class="pane-head">
-            <h2>オリジナル</h2>
-            <span class="tag">変更不可</span>
+            <div class="pane-title">
+              <h2>オリジナル</h2>
+              <span class="tag">変更不可</span>
+            </div>
+            <span class="line-badge" id="srcLineBadge">表示: 1〜18行 / 全 0行</span>
           </div>
           <textarea id="sourceText" readonly spellcheck="false"></textarea>
         </div>
         <div class="pane">
           <div class="pane-head">
-            <h2>日本語字幕</h2>
-            <span class="tag jp">編集できます</span>
+            <div class="pane-title">
+              <h2>日本語字幕</h2>
+              <span class="tag jp">編集できます</span>
+            </div>
+            <span class="line-badge" id="dstLineBadge">表示: 1〜18行 / 全 0行</span>
           </div>
           <textarea id="translatedText" class="jp-area" spellcheck="false" placeholder="翻訳結果がここに表示されます"></textarea>
         </div>
@@ -162,6 +170,7 @@
       const el = id => document.getElementById(id);
       const fileInput = el('fileInput'), dropZone = el('dropZone'), fileBar = el('fileBar'), fileName = el('fileName'), fileInfo = el('fileInfo');
       const translateBtn = el('translateBtn'), modelSelect = el('modelSelect'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText');
+      const srcLineBadge = el('srcLineBadge'), dstLineBadge = el('dstLineBadge');
       const status = el('statusMessage'), tokenUsage = el('tokenUsage'), integrity = el('integrity'), downloadBtn = el('downloadBtn');
       let original = '', fileBaseName = 'translated.srt', newline = '\n';
       let totalUsage = { prompt: 0, candidates: 0, total: 0 };
@@ -183,6 +192,26 @@
       };
 
       const splitLines = text => text.split(/\r\n|\n|\r/);
+
+      function updateLineBadges(activeTextarea = sourceText) {
+        const total = original ? splitLines(original).length : 0;
+        if (!total) {
+          srcLineBadge.textContent = '表示: 0〜0行 / 全0行';
+          dstLineBadge.textContent = '表示: 0〜0行 / 全0行';
+          return;
+        }
+        const computedStyle = window.getComputedStyle(activeTextarea);
+        const lh = parseFloat(computedStyle.lineHeight) || 21.84;
+        const padTop = parseFloat(computedStyle.paddingTop) || 17;
+        const st = activeTextarea.scrollTop;
+        const ch = activeTextarea.clientHeight;
+        const startLine = Math.min(total, Math.max(1, Math.floor(st / lh) + 1));
+        const visibleCount = Math.max(1, Math.floor((ch - padTop) / lh));
+        const endLine = Math.min(total, startLine + visibleCount - 1);
+        const text = `表示: ${startLine}〜${endLine}行 / 全${total.toLocaleString()}行`;
+        srcLineBadge.textContent = text;
+        dstLineBadge.textContent = text;
+      }
 
       function subtitleLineIndexes(text) {
         const lines = splitLines(text);
@@ -246,6 +275,7 @@
           integrity.classList.remove('show');
           downloadBtn.classList.remove('show');
           setStatus('準備完了。翻訳を開始できます。');
+          setTimeout(updateLineBadges, 20);
         };
         reader.readAsText(file, 'utf-8');
       }
@@ -457,14 +487,59 @@
         integrity.classList.remove('show');
         totalUsage = { prompt: 0, candidates: 0, total: 0 };
         updateTokenDisplay();
+        updateLineBadges();
       });
 
       translateBtn.addEventListener('click', runTranslation);
+
+      // --- スクロール同期・行位置インジケーター連動 ---
+      let isSyncingLeft = false;
+      let isSyncingRight = false;
+
+      sourceText.addEventListener('scroll', () => {
+        if (isSyncingLeft) {
+          isSyncingLeft = false;
+          return;
+        }
+        isSyncingRight = true;
+
+        const maxSrc = sourceText.scrollHeight - sourceText.clientHeight;
+        const maxDst = translatedText.scrollHeight - translatedText.clientHeight;
+        if (maxSrc > 0 && maxDst > 0) {
+          translatedText.scrollTop = (sourceText.scrollTop / maxSrc) * maxDst;
+        } else {
+          translatedText.scrollTop = sourceText.scrollTop;
+        }
+        updateLineBadges(sourceText);
+      });
+
+      translatedText.addEventListener('scroll', () => {
+        if (isSyncingRight) {
+          isSyncingRight = false;
+          return;
+        }
+        isSyncingLeft = true;
+
+        const maxSrc = sourceText.scrollHeight - sourceText.clientHeight;
+        const maxDst = translatedText.scrollHeight - translatedText.clientHeight;
+        if (maxSrc > 0 && maxDst > 0) {
+          sourceText.scrollTop = (translatedText.scrollTop / maxDst) * maxSrc;
+        } else {
+          sourceText.scrollTop = translatedText.scrollTop;
+        }
+        updateLineBadges(translatedText);
+      });
+
+      ['click', 'keyup'].forEach(evt => {
+        sourceText.addEventListener(evt, () => updateLineBadges(sourceText));
+        translatedText.addEventListener(evt, () => updateLineBadges(translatedText));
+      });
 
       translatedText.addEventListener('input', () => {
         if (translatedText.value) {
           setStatus('編集内容を検証しました。');
           showValidation();
+          updateLineBadges(translatedText);
         }
       });
 

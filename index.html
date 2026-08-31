@@ -41,11 +41,18 @@
     .pane:first-child { border-right:1px solid var(--line); }
     .pane-head { padding:13px 18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--line); }
     .pane-title { display:flex; align-items:center; gap:8px; }
+    .pane-nav { display:flex; align-items:center; gap:6px; }
     .pane h2 { margin:0; font-size:15px; }
     .tag { color:#50617d; background:#edf1f7; border-radius:99px; padding:4px 8px; font-size:11px; font-weight:700; }
     .tag.jp { color:#087051; background:#e3f7ef; }
     .line-badge { font-size:11px; color:#2c4368; background:#edf3fc; border:1px solid #d0deee; border-radius:6px; padding:3px 8px; font-weight:700; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; white-space:nowrap; }
-    textarea { display:block; width:100%; height:370px; resize:vertical; padding:17px 20px; border:0; outline:0; color:#26324a; background:#fcfdff; font:13px/1.68 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; }
+    .jump-btn { padding:3px 8px; font-size:11px; font-weight:700; color:#506584; background:#edf2f9; border:1px solid #d5e0f0; border-radius:6px; cursor:pointer; transition:.15s; white-space:nowrap; }
+    .jump-btn:hover { color:var(--blue); background:#e1ebfa; border-color:#bad0f5; }
+    textarea { display:block; width:100%; height:390px; resize:vertical; padding:14px 18px; border:0; outline:0; color:#26324a; background:#fcfdff; font:13px/1.68 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre; overflow-y:scroll; scrollbar-width:thin; scrollbar-color:#aabacf #f0f4fa; }
+    textarea::-webkit-scrollbar { width:12px; }
+    textarea::-webkit-scrollbar-track { background:#f0f4fa; border-radius:6px; }
+    textarea::-webkit-scrollbar-thumb { background:#b4c4dc; border-radius:6px; border:2px solid #f0f4fa; cursor:pointer; }
+    textarea::-webkit-scrollbar-thumb:hover { background:var(--blue); }
     .jp-area { background:#fbfefc; }
     .status { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 20px; border-top:1px solid var(--line); }
     .status-left { display:flex; flex-direction:column; gap:4px; }
@@ -136,7 +143,11 @@
               <h2>オリジナル</h2>
               <span class="tag">変更不可</span>
             </div>
-            <span class="line-badge" id="srcLineBadge">表示: 1〜18行 / 全 0行</span>
+            <div class="pane-nav">
+              <span class="line-badge" id="srcLineBadge">表示: 0〜0行 / 全0行</span>
+              <button type="button" class="jump-btn" id="srcJumpTop" title="先頭へスクロール">⤒ 先頭</button>
+              <button type="button" class="jump-btn" id="srcJumpBottom" title="末尾へスクロール">⤓ 末尾</button>
+            </div>
           </div>
           <textarea id="sourceText" readonly spellcheck="false"></textarea>
         </div>
@@ -146,7 +157,11 @@
               <h2>日本語字幕</h2>
               <span class="tag jp">編集できます</span>
             </div>
-            <span class="line-badge" id="dstLineBadge">表示: 1〜18行 / 全 0行</span>
+            <div class="pane-nav">
+              <span class="line-badge" id="dstLineBadge">表示: 0〜0行 / 全0行</span>
+              <button type="button" class="jump-btn" id="dstJumpTop" title="先頭へスクロール">⤒ 先頭</button>
+              <button type="button" class="jump-btn" id="dstJumpBottom" title="末尾へスクロール">⤓ 末尾</button>
+            </div>
           </div>
           <textarea id="translatedText" class="jp-area" spellcheck="false" placeholder="翻訳結果がここに表示されます"></textarea>
         </div>
@@ -200,14 +215,32 @@
           dstLineBadge.textContent = '表示: 0〜0行 / 全0行';
           return;
         }
+
+        const maxScroll = activeTextarea.scrollHeight - activeTextarea.clientHeight;
         const computedStyle = window.getComputedStyle(activeTextarea);
         const lh = parseFloat(computedStyle.lineHeight) || 21.84;
-        const padTop = parseFloat(computedStyle.paddingTop) || 17;
-        const st = activeTextarea.scrollTop;
-        const ch = activeTextarea.clientHeight;
-        const startLine = Math.min(total, Math.max(1, Math.floor(st / lh) + 1));
-        const visibleCount = Math.max(1, Math.floor((ch - padTop) / lh));
-        const endLine = Math.min(total, startLine + visibleCount - 1);
+        const visibleLines = Math.max(1, Math.floor(activeTextarea.clientHeight / lh));
+
+        let startLine, endLine;
+
+        if (maxScroll <= 0 || total <= visibleLines) {
+          startLine = 1;
+          endLine = total;
+        } else if (activeTextarea.scrollTop + activeTextarea.clientHeight >= activeTextarea.scrollHeight - 4) {
+          // 最下部までスクロールしている場合：確実に最終行を表示
+          endLine = total;
+          startLine = Math.max(1, total - visibleLines + 1);
+        } else if (activeTextarea.scrollTop <= 2) {
+          // 最上部の場合
+          startLine = 1;
+          endLine = Math.min(total, visibleLines);
+        } else {
+          // 途中スクロール
+          const ratio = activeTextarea.scrollTop / maxScroll;
+          startLine = Math.min(total, Math.max(1, Math.round(ratio * (total - visibleLines)) + 1));
+          endLine = Math.min(total, startLine + visibleLines - 1);
+        }
+
         const text = `表示: ${startLine}〜${endLine}行 / 全${total.toLocaleString()}行`;
         srcLineBadge.textContent = text;
         dstLineBadge.textContent = text;
@@ -534,6 +567,18 @@
         sourceText.addEventListener(evt, () => updateLineBadges(sourceText));
         translatedText.addEventListener(evt, () => updateLineBadges(translatedText));
       });
+
+      // --- クイックスクロール（先頭 / 末尾ジャンプ） ---
+      const jumpTo = targetTop => {
+        sourceText.scrollTop = targetTop;
+        translatedText.scrollTop = targetTop;
+        updateLineBadges(sourceText);
+      };
+
+      el('srcJumpTop').addEventListener('click', () => jumpTo(0));
+      el('dstJumpTop').addEventListener('click', () => jumpTo(0));
+      el('srcJumpBottom').addEventListener('click', () => jumpTo(sourceText.scrollHeight));
+      el('dstJumpBottom').addEventListener('click', () => jumpTo(translatedText.scrollHeight));
 
       translatedText.addEventListener('input', () => {
         if (translatedText.value) {

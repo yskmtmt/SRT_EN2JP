@@ -131,6 +131,13 @@
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
             </select>
           </div>
+          <div class="engine">
+            <label for="contextSelect">文脈考慮:</label>
+            <select id="contextSelect">
+              <option value="enabled" selected>有効（前後の文脈を考慮）</option>
+              <option value="disabled">無効（各行を独立翻訳）</option>
+            </select>
+          </div>
           <button class="primary" id="translateBtn" type="button" disabled>AIで日本語に翻訳する →</button>
         </div>
       </div>
@@ -178,13 +185,13 @@
     <div class="footer-info">
       <div class="quota" id="quotaInfo">API無料枠の残量確認: <a href="https://aistudio.google.com/usage" target="_blank" rel="noreferrer">Google AI Studio (Usage) ↗</a></div>
     </div>
-    <p class="hint">Gemini AIは前後の台詞を考慮して、自然な会話調・呼称統一・短く簡潔な映像字幕に翻訳します。出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。</p>
+    <p class="hint">Gemini AIは前後の台詞を考慮して、自然な会話調・呼称統一・短く簡潔な映像字幕に翻訳します（文脈考慮を無効にすると各行を独立翻訳します）。出力前に、行数・空行位置・字幕番号・タイムコードがオリジナルと一致するかを必ず検査します。</p>
   </main>
   <script>
     (() => {
       const el = id => document.getElementById(id);
       const fileInput = el('fileInput'), dropZone = el('dropZone'), fileBar = el('fileBar'), fileName = el('fileName'), fileInfo = el('fileInfo');
-      const translateBtn = el('translateBtn'), modelSelect = el('modelSelect'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText');
+      const translateBtn = el('translateBtn'), modelSelect = el('modelSelect'), contextSelect = el('contextSelect'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText');
       const srcLineBadge = el('srcLineBadge'), dstLineBadge = el('dstLineBadge');
       const status = el('statusMessage'), tokenUsage = el('tokenUsage'), integrity = el('integrity'), downloadBtn = el('downloadBtn');
       let original = '', fileBaseName = 'translated.srt', newline = '\n';
@@ -317,14 +324,14 @@
       const MIN_REQUEST_INTERVAL_MS = 6200; // RPM <= 10 (1分間最大約9.6リクエスト) を確実に維持
       let lastRequestStartTime = 0;
 
-      async function translateBatch(items, model) {
+      async function translateBatch(items, model, ignoreContext = false) {
         let lastError = 'AI翻訳サービスに接続できませんでした。';
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
             const response = await fetch('/api/translate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items, model })
+              body: JSON.stringify({ items, model, ignoreContext })
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
@@ -376,12 +383,15 @@
 
         translateBtn.disabled = true;
         modelSelect.disabled = true;
+        contextSelect.disabled = true;
         downloadBtn.classList.remove('show');
         integrity.classList.remove('show');
         totalUsage = { prompt: 0, candidates: 0, total: 0 };
         updateTokenDisplay();
 
         const selectedModel = modelSelect.value;
+        const ignoreContext = contextSelect.value === 'disabled';
+        const contextNotice = ignoreContext ? '各行を独立して' : '文脈を考慮して';
         const translatable = targets.filter(i => /[A-Za-z]/.test(lines[i])).map(i => ({ line: i, text: lines[i] }));
         const batches = [];
         for (let i = 0; i < translatable.length; i += BATCH_SIZE) {
@@ -395,7 +405,7 @@
         const errors = [];
         lastRequestStartTime = 0;
 
-        setStatus(`Geminiが文脈を考慮して翻訳しています… 0 / ${translatable.length} 行`);
+        setStatus(`Geminiが${contextNotice}翻訳しています… 0 / ${translatable.length} 行`);
 
         for (let i = 0; i < batches.length; i++) {
           const currentBatch = batches[i];
@@ -411,10 +421,10 @@
           }
           lastRequestStartTime = Date.now();
 
-          setStatus(`Geminiが文脈を考慮して翻訳中… (${completed + 1}〜${Math.min(completed + currentBatch.length, translatable.length)} / ${translatable.length} 行)`);
+          setStatus(`Geminiが${contextNotice}翻訳中… (${completed + 1}〜${Math.min(completed + currentBatch.length, translatable.length)} / ${translatable.length} 行)`);
 
           try {
-            const results = await translateBatch(currentBatch, selectedModel);
+            const results = await translateBatch(currentBatch, selectedModel, ignoreContext);
             for (const item of currentBatch) {
               if (results.has(item.line)) {
                 lines[item.line] = results.get(item.line);
@@ -433,7 +443,7 @@
           }
 
           completed += currentBatch.length;
-          setStatus(`Geminiが文脈を考慮して翻訳中… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
+          setStatus(`Geminiが${contextNotice}翻訳中… ${completed} / ${translatable.length} 行${failedCount > 0 ? ` (未翻訳: ${failedCount} 行)` : ''}`);
         }
 
         translatedText.value = lines.join(newline);
@@ -465,7 +475,7 @@
 
               setStatus(`未翻訳行を再翻訳中… (${i * 20 + 1}〜${Math.min((i + 1) * 20, missedItems.length)} / ${missedItems.length} 行)`);
               try {
-                const results = await translateBatch(retryBatch, selectedModel);
+                const results = await translateBatch(retryBatch, selectedModel, ignoreContext);
                 for (const item of retryBatch) {
                   if (results.has(item.line)) {
                     lines[item.line] = results.get(item.line);
@@ -481,6 +491,7 @@
 
         translateBtn.disabled = false;
         modelSelect.disabled = false;
+        contextSelect.disabled = false;
 
         // 最終チェック
         const finalMissed = translatable.filter(item => {

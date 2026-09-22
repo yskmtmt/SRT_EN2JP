@@ -61,6 +61,10 @@
     .status-message.error { color:var(--red); font-weight:700; }
     .token-usage { font-size:12px; color:#4a5b78; font-weight:600; display:none; }
     .token-usage.show { display:inline-block; }
+    .status-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .secondary-btn { padding:11px 16px; color:#214478; background:#ebf3ff; border:1px solid #bfd6f6; border-radius:10px; font-weight:700; font-size:13px; transition:.18s; cursor:pointer; white-space:nowrap; }
+    .secondary-btn:hover { background:#dbe8fc; border-color:#9ec2f3; }
+    .secondary-btn:disabled { opacity:.48; cursor:not-allowed; }
     .download { display:none; padding:11px 16px; color:#fff; background:var(--green); white-space:nowrap; }
     .download.show { display:block; }
     .download:hover { background:#116f4b; }
@@ -83,6 +87,8 @@
       .controls { flex-direction:column; align-items:stretch; margin-left:0; }
       .primary { width:100%; }
       .status { align-items:flex-start; flex-direction:column; }
+      .status-actions { width:100%; flex-direction:column; align-items:stretch; }
+      .secondary-btn { width:100%; }
       .download { width:100%; }
       .footer-info { flex-direction:column; align-items:flex-start; }
     }
@@ -178,7 +184,10 @@
           <span id="statusMessage" class="status-message">ファイルを選択すると、ここで処理状況を表示します。</span>
           <span id="tokenUsage" class="token-usage"></span>
         </div>
-        <button class="download" id="downloadBtn" type="button">.srt をダウンロード</button>
+        <div class="status-actions">
+          <button class="secondary-btn" id="extendDurationBtn" type="button" title="すべての字幕の表示終了時刻を1秒延長（次字幕と重なる直前[1ms前]まで）します">⏱ 終了タイムを1秒延長</button>
+          <button class="download" id="downloadBtn" type="button">.srt をダウンロード</button>
+        </div>
       </div>
     </section>
     <div class="integrity" id="integrity"></div>
@@ -193,7 +202,7 @@
       const fileInput = el('fileInput'), dropZone = el('dropZone'), fileBar = el('fileBar'), fileName = el('fileName'), fileInfo = el('fileInfo');
       const translateBtn = el('translateBtn'), modelSelect = el('modelSelect'), contextSelect = el('contextSelect'), work = el('work'), sourceText = el('sourceText'), translatedText = el('translatedText');
       const srcLineBadge = el('srcLineBadge'), dstLineBadge = el('dstLineBadge');
-      const status = el('statusMessage'), tokenUsage = el('tokenUsage'), integrity = el('integrity'), downloadBtn = el('downloadBtn');
+      const status = el('statusMessage'), tokenUsage = el('tokenUsage'), integrity = el('integrity'), downloadBtn = el('downloadBtn'), extendDurationBtn = el('extendDurationBtn');
       let original = '', fileBaseName = 'translated.srt', newline = '\n';
       let totalUsage = { prompt: 0, candidates: 0, total: 0 };
       const timecode = /^\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}(?:\s+.*)?\s*$/;
@@ -214,6 +223,84 @@
       };
 
       const splitLines = text => text.split(/\r\n|\n|\r/);
+
+      function parseTimestampToMs(h, m, s, ms) {
+        return (parseInt(h, 10) * 3600 + parseInt(m, 10) * 60 + parseInt(s, 10)) * 1000 + parseInt(ms, 10);
+      }
+
+      function formatMsToTimestamp(totalMs, sep = ',') {
+        const safeMs = Math.max(0, Math.floor(totalMs));
+        const ms = safeMs % 1000;
+        const totalSeconds = Math.floor(safeMs / 1000);
+        const s = totalSeconds % 60;
+        const totalMinutes = Math.floor(totalSeconds / 60);
+        const m = totalMinutes % 60;
+        const h = Math.floor(totalMinutes / 60);
+        const pad = (num, len = 2) => String(num).padStart(len, '0');
+        return `${pad(h)}:${pad(m)}:${pad(s)}${sep}${pad(ms, 3)}`;
+      }
+
+      function extendTimecodesInSrt(text) {
+        const lines = splitLines(text);
+        const tcInfo = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const match = lines[i].match(/^(\s*)(\d{1,2}):(\d{2}):(\d{2})([,.])(\d{3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})([,.])(\d{3})(\s*.*)$/);
+          if (match) {
+            const [
+              _,
+              leadingSpace,
+              sh, sm, ss, sSep, sms,
+              eh, em, es, eSep, ems,
+              trailing
+            ] = match;
+            const startMs = parseTimestampToMs(sh, sm, ss, sms);
+            const endMs = parseTimestampToMs(eh, em, es, ems);
+            tcInfo.push({
+              lineIndex: i,
+              leadingSpace,
+              startStr: `${String(sh).padStart(2, '0')}:${sm}:${ss}${sSep}${sms}`,
+              startMs,
+              endMs,
+              eSep,
+              trailing
+            });
+          }
+        }
+
+        let adjustedCount = 0;
+        let cappedCount = 0;
+
+        for (let k = 0; k < tcInfo.length; k++) {
+          const cur = tcInfo[k];
+          const next = tcInfo[k + 1];
+          let newEndMs = cur.endMs + 1000;
+
+          if (next) {
+            if (cur.endMs >= next.startMs) {
+              // 元々すでに重複または隣接している場合は変更しない
+              newEndMs = cur.endMs;
+            } else if (newEndMs >= next.startMs) {
+              // 次の字幕と重なってしまう場合は、次の字幕の開始1ms前まで（仕様A）
+              newEndMs = Math.max(cur.endMs, next.startMs - 1);
+              cappedCount++;
+            }
+          }
+
+          if (newEndMs !== cur.endMs) {
+            adjustedCount++;
+            const newEndStr = formatMsToTimestamp(newEndMs, cur.eSep);
+            lines[cur.lineIndex] = `${cur.leadingSpace}${cur.startStr} --> ${newEndStr}${cur.trailing}`;
+          }
+        }
+
+        return {
+          newText: lines.join(newline),
+          totalCount: tcInfo.length,
+          adjustedCount,
+          cappedCount
+        };
+      }
 
       function updateLineBadges(activeTextarea = sourceText) {
         const total = original ? splitLines(original).length : 0;
@@ -384,6 +471,7 @@
         translateBtn.disabled = true;
         modelSelect.disabled = true;
         contextSelect.disabled = true;
+        extendDurationBtn.disabled = true;
         downloadBtn.classList.remove('show');
         integrity.classList.remove('show');
         totalUsage = { prompt: 0, candidates: 0, total: 0 };
@@ -492,6 +580,7 @@
         translateBtn.disabled = false;
         modelSelect.disabled = false;
         contextSelect.disabled = false;
+        extendDurationBtn.disabled = false;
 
         // 最終チェック
         const finalMissed = translatable.filter(item => {
@@ -596,6 +685,40 @@
           setStatus('編集内容を検証しました。');
           showValidation();
           updateLineBadges(translatedText);
+        }
+      });
+
+      extendDurationBtn.addEventListener('click', () => {
+        if (!original) {
+          setStatus('SRTファイルが選択されていません。', 'error');
+          return;
+        }
+
+        const origResult = extendTimecodesInSrt(original);
+        if (origResult.totalCount === 0) {
+          setStatus('タイムコード行が検出されませんでした。', 'error');
+          return;
+        }
+
+        original = origResult.newText;
+        sourceText.value = original;
+
+        if (translatedText.value.trim()) {
+          const transResult = extendTimecodesInSrt(translatedText.value);
+          translatedText.value = transResult.newText;
+        }
+
+        showValidation();
+        updateLineBadges();
+
+        const cappedMsg = origResult.cappedCount > 0
+          ? `（次字幕との重複直前[1ms前]で調整: ${origResult.cappedCount}件）`
+          : '（全件1秒延長）';
+
+        if (origResult.adjustedCount > 0) {
+          setStatus(`全${origResult.totalCount}件中、${origResult.adjustedCount}件の字幕表示終了タイムを延長しました${cappedMsg}。`, 'ok');
+        } else {
+          setStatus('すべての字幕がすでに次字幕と隣接または重複しているため、これ以上の延長は行われませんでした。');
         }
       });
 

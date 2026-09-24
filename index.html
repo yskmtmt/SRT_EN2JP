@@ -536,12 +536,20 @@
 
         translatedText.value = lines.join(newline);
 
+        // 日本語への翻訳漏れ（未翻訳または英語のまま放置）を正確に判定する関数
+        const isMissedSubtitle = (translatedLine, originalText) => {
+          if (!translatedLine || !translatedLine.trim()) return true;
+          // 原文と完全に一致している場合は未翻訳
+          if (translatedLine.trim() === originalText.trim()) return true;
+          // ひらがな・カタカナ・漢字（日本語文字）が1文字でも含まれていれば翻訳完了とみなす（OK, TV, FBI, </i> 等の英字混在を誤検知しない）
+          if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(translatedLine)) return false;
+          // 日本語文字が一切なく、アルファベットが含まれている場合は英文残存（未翻訳）と判定
+          return /[A-Za-z]/.test(translatedLine);
+        };
+
         // --- 後処理（取りこぼし・英文残存行の自動回収・再翻訳フェーズ） ---
         if (!isAborted) {
-          const missedItems = translatable.filter(item => {
-            const cur = lines[item.line];
-            return cur === item.text || /[A-Za-z]{2,}/.test(cur);
-          });
+          const missedItems = translatable.filter(item => isMissedSubtitle(lines[item.line], item.text));
 
           if (missedItems.length > 0 && missedItems.length <= MAX_FAILED_LINES) {
             setStatus(`未翻訳・英文が残った ${missedItems.length} 行を自動回収・再翻訳しています…`);
@@ -583,10 +591,7 @@
         extendDurationBtn.disabled = false;
 
         // 最終チェック
-        const finalMissed = translatable.filter(item => {
-          const cur = lines[item.line];
-          return cur === item.text || /[A-Za-z]{2,}/.test(cur);
-        });
+        const finalMissed = translatable.filter(item => isMissedSubtitle(lines[item.line], item.text));
 
         if (isAborted) {
           setStatus(`【処理中断】エラーにより未翻訳（原文のまま）となった行が100行を超えたため（未翻訳: ${failedCount} 行）、安全のため処理を停止しました。最新のエラー: ${errors.at(-1) || '通信エラー'}（該当行までは反映済みです）`, 'error');

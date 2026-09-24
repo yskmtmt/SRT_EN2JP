@@ -68,6 +68,38 @@ module.exports = async (req, res) => {
 
   const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
+
+  const generationConfig = {
+    responseMimeType: 'application/json',
+    responseSchema: {
+      type: 'OBJECT',
+      required: ['translations'],
+      properties: {
+        translations: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            required: ['line', 'text'],
+            properties: {
+              line: { type: 'INTEGER' },
+              text: { type: 'STRING' }
+            }
+          }
+        }
+      }
+    },
+    temperature: 0.3
+  };
+
+  // Thinking（思考機能）対応モデルの場合、思考バジェットを0にして思考遅延を排除し、翻訳生成速度を最大化
+  if (
+    selectedModel.includes('2.5') ||
+    selectedModel.includes('3.7') ||
+    selectedModel.includes('thinking')
+  ) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  }
+
   const payload = {
     contents: [
       {
@@ -78,27 +110,7 @@ module.exports = async (req, res) => {
     systemInstruction: {
       parts: [{ text: instructions }]
     },
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'OBJECT',
-        required: ['translations'],
-        properties: {
-          translations: {
-            type: 'ARRAY',
-            items: {
-              type: 'OBJECT',
-              required: ['line', 'text'],
-              properties: {
-                line: { type: 'INTEGER' },
-                text: { type: 'STRING' }
-              }
-            }
-          }
-        }
-      },
-      temperature: 0.3
-    }
+    generationConfig
   };
 
   try {
